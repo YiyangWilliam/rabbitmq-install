@@ -1,0 +1,75 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: iflytek-industry-uat
+  labels:
+    app: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      volumes:
+        - name: host-time 
+          hostPath:
+            path: /etc/localtime
+            type: ''
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:latest
+          ports:
+            - name: tcp-5672
+              containerPort: 5672
+              protocol: TCP
+            - name: http-15672
+              containerPort: 15672
+              protocol: TCP
+          env:
+            - name: iflytek
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: user
+            - name: admin123
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: pass
+          resources:
+            limits:
+              cpu: '2'
+              memory: 4000Mi
+            requests:
+              cpu: 100m
+              memory: 500Mi
+          volumeMounts:
+            - name: host-time
+              readOnly: true
+              mountPath: /etc/localtime
+  serviceName: rabbitmq-headless
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-headless
+  namespace: iflytek-industry-uat
+  labels:
+    app: rabbitmq
+spec:
+  ports:
+    - name: tcp-rabbitmq-5672
+      protocol: TCP
+      port: 5672
+      targetPort: 5672
+  selector:
+    app: rabbitmq
+  clusterIP: None
+  type: ClusterIP
